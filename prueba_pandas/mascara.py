@@ -20,7 +20,7 @@ print("\n")
 mascara= df['pais'] == 'Japón'  #Creamos la mascara para filtrar el pais
 
 print("-------------2. esta es la mascara de True/False-------------")
-print("Pyhn estara revisando fila por fila: ¿Eres Japón? Si es así, marca True, si no, marca False")
+print("Python estara revisando fila por fila: ¿Eres Japón? Si es así, marca True, si no, marca False")
 print(mascara)
 print("Esta mascara nos ayudara a filtrar el DataFrame (solo dira True Donde este Japón)")
 print("\n")
