@@ -2,7 +2,6 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import zipfile #<-- Para leer los archivos zip sin descomprimirlos
 
 #Titulo y confiuración 
 st.set_page_config(page_title="Proecto (Individuos usando internet)", layout= "wide")
@@ -10,25 +9,160 @@ st.title("🌍 Acceso Global a Internet")
 st.markdown("Datos del Banco Mundial analizados con Python")
 
 
-#Carga de los datos desde el ZIP
+
 # Usamos @st.cache_data para que no recargue el archivo cada vez que tocas un botón
 @st.cache_data
 def cargar_datos(): #Creamos la funcion para cargar los datos
-    #Nombre del archivo
-    archivo_zip = "datos_base.zip"
 
     #Nombre del csv exacto que necesitamos
     archivo_csv = "API_IT.NET.USER.ZS_DS2_en_csv_v2_100.csv"
 
-    #Abrimos el zip
-    with zipfile.ZipFile(archivo_zip, "r") as z:
-        #Abrimos el csv especifico y saltamos las primeras 4 lineas
-        with z.open(archivo_zip) as f:
-            df = pd.read_csv(f, skiprows=4)
-    return df
+    #Leemos el CSV
+    try:
+        df = pd.read_csv(archivo_csv, skiprows=4)
+        return df
+    except FileNotFoundError:
+        return None
 
-#Ejecutamos la funcion
+#Ejecutamos la funcion 
 df_bruto = cargar_datos()
 
+if df_bruto is None:
+    st.error("⚠️No se encuentra el archivo 🚧")
+    st.stop()#Detiene la app para que no explote
+
+
+
+#Ahora limpiamos el CSV ya que es muy robusto
+def limpiar_datos(df): #Creamos la funcion
+    datos= df[['Country Name', 'Country Code', '2023']]
+
+    #Renombramos al español
+    datos.columns= ['Pais', 'Codigo', 'Internet_Porc']
+
+    #Borramos los datos innecesarios (De paises que no reportaron)
+    datos= datos.dropna()
+    return datos
+
+df_limpio = limpiar_datos(df_bruto)
 #Verificacion rapida 
-st.write("Archivo Cargado. Primeras filas: ", df_bruto.head())
+#st.write("Archivo Cargado. Primeras filas: ", df_limpio.head())
+
+#Añadimos los datos mas recientes de Venezuela (Inexistentes a partir del año 2017 )
+
+venezuela = pd.DataFrame({
+    'Pais': ['Venezuela'],
+    'Codigo': ['VEN'],
+    'Internet_Porc': [61.6]
+}) #Datos Aproximados para fines de 2025
+
+#Concatenamos y pegamos a venezuela en la lista de paises
+df_final = pd.concat([df_limpio, venezuela], ignore_index=True)#<-- Para que no se descontrolen los indicies
+
+#Tabla final
+#st.subheader("Datos para analizar")
+#st.dataframe(df_final)
+
+#--------------------------------------------
+#Aqui empieza la interfaz
+#---------------------------------------------
+
+
+#Barra lateral (SIDEBAR)
+st.sidebar.header("🔍 Panel de Control")
+st.sidebar.write("Seleccione un pais para ver sus detalles específicos. ")
+
+#Creamos una lista de paises ordenada
+lista_paises= sorted(df_final['Pais'].unique())
+pais_seleccionado= st.sidebar.selectbox("Selecciona un Pais: ", lista_paises)
+
+
+#-------------------Mapa 3D---------------------------
+
+st.success("✅ Datos cargados correctamente")
+st.subheader("🗺️ Dashboard de Conectividad Global")
+
+# 1. CREAMOS EL MAPA (Pero no lo mostramos todavía)
+figura_mapa = px.choropleth(
+    df_final, 
+    locations="Codigo", 
+    color="Internet_Porc",
+    hover_name="Pais", 
+    color_continuous_scale="Plasma",
+    projection="orthographic",
+    title="" # Sin título para ahorrar espacio
+)
+
+# Ajustes estéticos del mapa
+figura_mapa.update_layout(
+    geo=dict(
+        showocean=True, oceancolor="LightBlue",
+        showlakes=True, lakecolor="LightBlue",
+        showrivers=True, rivercolor="LightBlue"
+    ),
+    margin={"r":0,"t":0,"l":0,"b":0},
+    height=450 # Altura fija para controlar el diseño
+)
+
+# 2. PREPARAMOS LOS DATOS DEL PAÍS SELECCIONADO
+datos_pais = df_final[df_final['Pais'] == pais_seleccionado]
+porcentaje_pais = datos_pais['Internet_Porc'].values[0]
+promedio_mundial = df_final['Internet_Porc'].mean()
+
+# ------------------- DIVISIÓN EN COLUMNAS ---------------------------
+# Creamos las dos columnas: Izquierda (Grande) y Derecha (Pequeña)
+col_mapa, col_datos = st.columns([3, 1.3], gap="medium")
+
+# --- COLUMNA IZQUIERDA: EL MAPA ---
+with col_mapa:
+    st.markdown("#### Vista Global")
+    # Aquí mostramos el mapa directamente, SIN st.metric
+    st.plotly_chart(figura_mapa, use_container_width=True)
+
+# --- COLUMNA DERECHA: LOS DATOS ---
+with col_datos:
+    st.markdown(f"#### 📊 Análisis: {pais_seleccionado}")
+    
+    # A) El Veredicto
+    if porcentaje_pais > 90:
+        st.success("🚀 Excelente")
+    elif porcentaje_pais > 50:
+        st.warning("😐 Regular")
+    else:
+        st.error("😥 Baja")
+
+    # B) Las Métricas
+    st.metric(
+        label="Acceso Internet",
+        value=f"{porcentaje_pais:.1f}%",
+        delta=f"{porcentaje_pais - promedio_mundial:.1f}% vs Mundo"
+    )
+    
+    st.metric(label="Promedio Global", value=f"{promedio_mundial:.1f}%")
+
+    st.write("---") 
+
+    # C) El Gráfico de Barras (Pequeño)
+    datos_grafico = pd.DataFrame({
+        'Entidad': [pais_seleccionado, 'Mundo'],
+        'Porcentaje': [porcentaje_pais, promedio_mundial]
+    })
+
+    figura_barras = px.bar(
+        datos_grafico,
+        x='Entidad', 
+        y='Porcentaje',
+        color='Entidad',
+        text_auto='.1f',
+        height=200 # Gráfico bajito para que quepa bien
+    )
+    
+    # Limpiamos el gráfico para que se vea elegante en tamaño pequeño
+    figura_barras.update_layout(
+        showlegend=False, 
+        margin=dict(l=0, r=0, t=0, b=0),
+        xaxis_title=None,
+        yaxis_title=None
+    )
+    
+    st.plotly_chart(figura_barras, use_container_width=True)
