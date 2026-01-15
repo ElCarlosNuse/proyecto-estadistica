@@ -4,11 +4,40 @@ import streamlit as st
 import plotly.express as px
 
 #Titulo y confiuración 
-st.set_page_config(page_title="Proecto (Individuos usando internet)", layout= "wide")
+st.set_page_config(page_title="Proyecto (Individuos usando internet)", layout= "wide")
 st.title("🌍 Acceso Global a Internet")
 st.markdown("Datos del Banco Mundial analizados con Python")
 
 
+
+
+# --- DICCIONARIO DE COORDENADAS (El GPS para que el mapa gire) ---
+# Plotly no sabe dónde están los países, así que se lo decimos nosotros.
+# He añadido los principales. Si falta alguno raro, el mapa simplemente no girará (se quedará quieto).
+COORDENADAS_PAISES = {
+    'Venezuela': {'lat': 6.4238, 'lon': -66.5897},
+    'United States': {'lat': 37.0902, 'lon': -95.7129},
+    'China': {'lat': 35.8617, 'lon': 104.1954},
+    'Spain': {'lat': 40.4637, 'lon': -3.7492},
+    'India': {'lat': 20.5937, 'lon': 78.9629},
+    'Brazil': {'lat': -14.2350, 'lon': -51.9253},
+    'Japan': {'lat': 36.2048, 'lon': 138.2529},
+    'Germany': {'lat': 51.1657, 'lon': 10.4515},
+    'France': {'lat': 46.2276, 'lon': 2.2137},
+    'United Kingdom': {'lat': 55.3781, 'lon': -3.4360},
+    'Russia': {'lat': 61.5240, 'lon': 105.3188},
+    'Australia': {'lat': -25.2744, 'lon': 133.7751},
+    'Mexico': {'lat': 23.6345, 'lon': -102.5528},
+    'Argentina': {'lat': -38.4161, 'lon': -63.6167},
+    'Colombia': {'lat': 4.5709, 'lon': -74.2973},
+    'Canada': {'lat': 56.1304, 'lon': -106.3468},
+    'Italy': {'lat': 41.8719, 'lon': 12.5674},
+    'South Africa': {'lat': -30.5595, 'lon': 22.9375},
+    'Nigeria': {'lat': 9.0820, 'lon': 8.6753},
+    'Egypt': {'lat': 26.8206, 'lon': 30.8025},
+    'Afghanistan': {'lat': 33.9391, 'lon':  67.7100}
+    # ... Puedes añadir más buscando en Google "Latitude Longitude of [Pais]"
+}
 
 # Usamos @st.cache_data para que no recargue el archivo cada vez que tocas un botón
 @st.cache_data
@@ -39,6 +68,21 @@ def limpiar_datos(df): #Creamos la funcion
 
     #Renombramos al español
     datos.columns= ['Pais', 'Codigo', 'Internet_Porc']
+
+    # --- IMPORTANTE: LIMPIEZA DE NOMBRES ---
+    # Esto arregla el problema de que el mapa no gire en Venezuela o Rusia
+    reemplazos = {
+        'Venezuela, RB': 'Venezuela',
+        'Egypt, Arab Rep.': 'Egypt',
+        'Korea, Rep.': 'South Korea',
+        'Iran, Islamic Rep.': 'Iran',
+        'Russian Federation': 'Russia',
+        'Syrian Arab Republic': 'Syria',
+        'Congo, Dem. Rep.': 'DR Congo',
+        'United States': 'United States' # Aseguramos coincidencia
+    }
+    datos['Pais'] = datos['Pais'].replace(reemplazos)
+    
 
     #Borramos los datos innecesarios (De paises que no reportaron)
     datos= datos.dropna()
@@ -77,6 +121,21 @@ lista_paises= sorted(df_final['Pais'].unique())
 pais_seleccionado= st.sidebar.selectbox("Selecciona un Pais: ", lista_paises)
 
 
+
+#Rotación por pais (por defecto en coordenadas 0 0)
+rotacion_lon= 0
+rotacion_lat= 0
+
+#Condicion para rotar los mapas (dependiendo del pais seleccionado)
+if pais_seleccionado in COORDENADAS_PAISES:
+    coords= COORDENADAS_PAISES[pais_seleccionado]
+    rotacion_lat= coords['lat']
+    rotacion_lon= coords['lon']
+
+else:
+    #Si el pais seleccionado no se encuentra dentro de los creados mostramos un mensaje de advertencia
+    st.sidebar.warning(f"Auto-rotacion No activa para el pais // No se tienen las coordenadas del pais ({pais_seleccionado}) ")
+
 #-------------------Mapa 3D---------------------------
 
 st.success("✅ Datos cargados correctamente")
@@ -90,7 +149,7 @@ figura_mapa = px.choropleth(
     hover_name="Pais", 
     color_continuous_scale="Plasma",
     projection="orthographic",
-    title="" # Sin título para ahorrar espacio
+    title="", # Sin título para ahorrar espacio
 )
 
 # Ajustes estéticos del mapa
@@ -98,12 +157,28 @@ figura_mapa.update_layout(
     geo=dict(
         showocean=True, oceancolor="LightBlue",
         showlakes=True, lakecolor="LightBlue",
-        showrivers=True, rivercolor="LightBlue"
+        showrivers=True, rivercolor="LightBlue",
+        projection_rotation= dict(
+            lon= rotacion_lon, lat= rotacion_lat, roll= 0),
+            center= dict(lat= 0, lon= 0)
     ),
-    margin={"r":0,"t":0,"l":0,"b":0},
-    height=450 # Altura fija para controlar el diseño
+
+
+margin={"r":0,"t":0,"l":0,"b":0},
+height=500 # Altura fija para controlar el diseño)
 )
 
+#Añadimos un resaltado adicional para el pais seleccionado 
+if pais_seleccionado in COORDENADAS_PAISES:
+    figura_mapa.add_scattergeo(
+    lat= [COORDENADAS_PAISES[pais_seleccionado]['lat']],
+    lon=[COORDENADAS_PAISES[pais_seleccionado]['lon']],
+    mode='text',
+    text="📶",
+    textfont= dict(size= 20,
+                color='gold'),
+    name=pais_seleccionado
+    )
 # 2. PREPARAMOS LOS DATOS DEL PAÍS SELECCIONADO
 datos_pais = df_final[df_final['Pais'] == pais_seleccionado]
 porcentaje_pais = datos_pais['Internet_Porc'].values[0]
@@ -116,6 +191,8 @@ col_mapa, col_datos = st.columns([3, 1.3], gap="medium")
 # --- COLUMNA IZQUIERDA: EL MAPA ---
 with col_mapa:
     st.markdown("#### Vista Global")
+
+    
     # Aquí mostramos el mapa directamente, SIN st.metric
     st.plotly_chart(figura_mapa, use_container_width=True)
 
