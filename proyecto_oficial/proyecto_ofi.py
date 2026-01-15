@@ -36,7 +36,6 @@ COORDENADAS_PAISES = {
     'Nigeria': {'lat': 9.0820, 'lon': 8.6753},
     'Egypt': {'lat': 26.8206, 'lon': 30.8025},
     'Afghanistan': {'lat': 33.9391, 'lon':  67.7100}
-    # ... Puedes añadir más buscando en Google "Latitude Longitude of [Pais]"
 }
 
 # Usamos @st.cache_data para que no recargue el archivo cada vez que tocas un botón
