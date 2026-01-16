@@ -159,25 +159,26 @@ figura_mapa.update_layout(
         showrivers=True, rivercolor="LightBlue",
         projection_rotation= dict(
             lon= rotacion_lon, lat= rotacion_lat, roll= 0),
-            center= dict(lat= 0, lon= 0)
+        center= dict(lat= 0, lon= 0)
     ),
 
 
-margin={"r":0,"t":0,"l":0,"b":0},
-height=500 # Altura fija para controlar el diseño)
+    margin={"r":0,"t":0,"l":0,"b":0},
+    height=500 # Altura fija para controlar el diseño)
 )
 
 #Añadimos un resaltado adicional para el pais seleccionado 
 if pais_seleccionado in COORDENADAS_PAISES:
     figura_mapa.add_scattergeo(
-    lat= [COORDENADAS_PAISES[pais_seleccionado]['lat']],
-    lon=[COORDENADAS_PAISES[pais_seleccionado]['lon']],
-    mode='text',
-    text="📶",
-    textfont= dict(size= 20,
-                color='gold'),
-    name=pais_seleccionado
+        lat= [COORDENADAS_PAISES[pais_seleccionado]['lat']],
+        lon=[COORDENADAS_PAISES[pais_seleccionado]['lon']],
+        mode='text',
+        text="📶",
+        textfont= dict(size= 20, color='gold'),
+        name=pais_seleccionado
     )
+
+
 # 2. PREPARAMOS LOS DATOS DEL PAÍS SELECCIONADO
 datos_pais = df_final[df_final['Pais'] == pais_seleccionado]
 porcentaje_pais = datos_pais['Internet_Porc'].values[0]
