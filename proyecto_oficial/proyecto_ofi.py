@@ -148,15 +148,30 @@ figura_mapa = px.choropleth(
     hover_name="Pais", 
     color_continuous_scale="Plasma",
     projection="orthographic",
+    range_color= (0,100),
     title="", # Sin título para ahorrar espacio
 )
 
 # Ajustes estéticos del mapa
 figura_mapa.update_layout(
+    paper_bgcolor='rgba(0,0,0,0)', # Fondo transparente para integrarse con el navegador
+    plot_bgcolor='rgba(0,0,0,0)', # Fondo transparente del gráfico
     geo=dict(
+        bgcolor='rgba(0,0,0,0)', # Hace transparente el fondo del mapa
+
+        #Apartados de agua
         showocean=True, oceancolor="LightBlue",
         showlakes=True, lakecolor="LightBlue",
         showrivers=True, rivercolor="LightBlue",
+
+        #Apartados de tierra
+        showland=True,       # <--- Activar la tierra base
+        landcolor="white", # <--- Color de la tierra
+        
+        # 4. LOS BORDES
+        showcountries=True, countrycolor="white",
+
+        # 5. LA ROTACIÓN AUTOMÁTICA
         projection_rotation= dict(
             lon= rotacion_lon, lat= rotacion_lat, roll= 0),
         center= dict(lat= 0, lon= 0)
