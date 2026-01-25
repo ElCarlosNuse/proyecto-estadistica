@@ -140,6 +140,28 @@ else:
 st.success("✅ Datos cargados correctamente")
 st.subheader("🗺️ Dashboard de Conectividad Global")
 
+
+#En la barra lateral (SIDEBAR)
+st.sidebar.markdown("---")
+modo_turbo = st.sidebar.checkbox("🚀 Modo Rendimiento (optimizado)", value=True, help="Activa este boton si el mapa va lento")
+
+
+#Definimos la proyeccion segun el modo 
+
+if modo_turbo:
+    proyeccion_activa= "equirectangular" #Modo plano mas òptimo
+    st.sidebar.info("ℹ️ Modo 2D activado para mayor fluidez.")
+    #solo permiimos movimientos de izquierda a derecha
+    lat_final= 0
+    lon_final= rotacion_lon
+
+else: 
+    proyeccion_activa= "orthographic" #Globo 3D (mejor pero mas pesado)
+    st.sidebar.success("✨ Modo 3D activado.")
+    lat_final = rotacion_lat
+    lon_final = rotacion_lon
+
+
 # 1. CREAMOS EL MAPA (Pero no lo mostramos todavía)
 figura_mapa = px.choropleth(
     df_final, 
@@ -147,7 +169,7 @@ figura_mapa = px.choropleth(
     color="Internet_Porc",
     hover_name="Pais", 
     color_continuous_scale="Plasma",
-    projection="orthographic",
+    projection= proyeccion_activa,
     range_color= (0,100),
     title="", # Sin título para ahorrar espacio
 )
@@ -159,28 +181,46 @@ figura_mapa.update_layout(
     geo=dict(
         bgcolor='rgba(0,0,0,0)', # Hace transparente el fondo del mapa
 
-        #Apartados de agua
-        showocean=True, oceancolor="LightBlue",
-        showlakes=True, lakecolor="LightBlue",
-        showrivers=True, rivercolor="LightBlue",
+        # --- TRUCO DE VELOCIDAD SUPREMA ---
+        # 110 = Baja resolución (Líneas simples, Vuela en Canaima)
+        # 50  = Alta resolución (Líneas detalladas, Lento)
+        resolution=110 if modo_turbo else 50,
 
-        #Apartados de tierra
-        showland=True,       # <--- Activar la tierra base
-        landcolor="white", # <--- Color de la tierra
         
-        # 4. LOS BORDES
-        showcountries=True, countrycolor="white",
+        #Apartados de agua si esta en modo rendimiento elagua estara desactivada
+        showocean= True,
+        oceancolor="LightBlue",
+
+        showlakes=True,
+        lakecolor="LightBlue",
+
+        showrivers=not modo_turbo,
+        rivercolor= "LightBlue",
+
+        #Tierra
+
+        showland=True,
+        landcolor="gray",
+
+
+        showcountries=True,
+        countrycolor="white",
 
         # 5. LA ROTACIÓN AUTOMÁTICA
-        projection_rotation= dict(
-            lon= rotacion_lon, lat= rotacion_lat, roll= 0),
-        center= dict(lat= 0, lon= 0)
-    ),
+        projection_rotation=dict(
+            lon=lon_final,  # Gira izquierda/derecha (OK en ambos)
+            lat=lat_final,  # Gira arriba/abajo (SOLO en 3D, en 2D es 0)
+            roll=0,
+            ),
+        ),
 
 
     margin={"r":0,"t":0,"l":0,"b":0},
-    height=500 # Altura fija para controlar el diseño)
-)
+    height=500 
+    )# Altura fija para controlar el diseño
+
+
+
 
 #Añadimos un resaltado adicional para el pais seleccionado 
 if pais_seleccionado in COORDENADAS_PAISES:
@@ -254,7 +294,11 @@ with col_datos:
         showlegend=False, 
         margin=dict(l=0, r=0, t=0, b=0),
         xaxis_title=None,
-        yaxis_title=None
+        yaxis_title=None,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        # Texto blanco para que se lea en modo oscuro
+        font=dict(color="white")
     )
     
     st.plotly_chart(figura_barras, use_container_width=True)
