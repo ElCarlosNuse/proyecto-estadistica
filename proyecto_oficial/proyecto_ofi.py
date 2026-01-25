@@ -4,7 +4,7 @@ import streamlit as st
 import plotly.express as px
 
 #Titulo y confiuración 
-st.set_page_config(page_title="Proyecto (Individuos usando internet)", layout= "wide")
+st.set_page_config(page_title="Proyecto (Individuos usando internet)", layout= "wide", page_icon="🌐" )
 st.title("🌍 Acceso Global a Internet")
 st.markdown("Datos del Banco Mundial analizados con Python")
 
@@ -184,27 +184,31 @@ figura_mapa.update_layout(
         # --- TRUCO DE VELOCIDAD SUPREMA ---
         # 110 = Baja resolución (Líneas simples, Vuela en Canaima)
         # 50  = Alta resolución (Líneas detalladas, Lento)
-        resolution=110 if modo_turbo else 50,
+        resolution=110,
 
         
         #Apartados de agua si esta en modo rendimiento elagua estara desactivada
         showocean= True,
         oceancolor="LightBlue",
 
-        showlakes=True,
+        showcoastlines=False,
+
+        showlakes= False,
         lakecolor="LightBlue",
 
-        showrivers=not modo_turbo,
+        showrivers=False,
         rivercolor= "LightBlue",
 
         #Tierra
 
         showland=True,
-        landcolor="gray",
+        landcolor="white",
 
 
         showcountries=True,
-        countrycolor="white",
+        countrycolor="gray",
+
+        showframe=False,
 
         # 5. LA ROTACIÓN AUTOMÁTICA
         projection_rotation=dict(
